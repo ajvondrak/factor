@@ -392,6 +392,13 @@ $nl
     preview-window
 }
 
+"A few global variables are used to control the above words:"
+{ $subsections
+    default-layout
+    graph-encoding
+    preview-format
+}
+
 "Shortcut words are also defined to save on extra typing:"
 { $subsections
     { "graphviz.render" "layouts" }
