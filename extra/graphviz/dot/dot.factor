@@ -2,7 +2,7 @@
 ! See http://factorcode.org/license.txt for BSD license.
 USING: accessors classes classes.tuple combinators formatting
 graphviz graphviz.attributes io io.files kernel namespaces
-sequences strings words ;
+sequences splitting strings words ;
 IN: graphviz.dot
 
 <PRIVATE
@@ -14,7 +14,11 @@ GENERIC: dot. ( obj -- )
 ! option in case there's a keyword clash, spaces in the ID,
 ! etc.  This does mean that HTML labels aren't supported, but
 ! they don't seem to work using the Graphviz API anyway.
-M: string dot. "\"%s\" " printf ;
+: escape ( str -- str' )
+    "\"" split "\\\"" join
+    "\0" split "" join ;
+
+M: string dot. escape "\"%s\" " printf ;
 
 : id. ( obj -- ) id>> dot. ;
 
