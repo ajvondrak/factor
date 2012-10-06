@@ -37,7 +37,7 @@ HELP: ?default-graphviz-program
 
 HELP: default-graphviz-program
 { $values
-        { "path" { $maybe "a pathname string" } }
+        { "path/f" { $maybe "a pathname string" } }
 }
 { $description "Searches your computer for the path to a Graphviz executable. If one cannot be found, returns " { $link f } "."
 $nl
