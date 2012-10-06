@@ -42,9 +42,9 @@ ERROR: unsupported-encoding graph-encoding ;
 M: unsupported-encoding summary
     drop "Must use utf8 or latin1 (match the graph's charset attribute)" ;
 
-HOOK: default-graphviz-program os ( -- path )
+HOOK: default-graphviz-program os ( -- path/f )
 
-M: object default-graphviz-program ( -- path )
+M: object default-graphviz-program ( -- path/f )
     standard-layouts [ find-in-path ] find nip ;
 
 ERROR: cannot-find-graphviz-installation ;
