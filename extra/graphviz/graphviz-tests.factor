@@ -39,11 +39,10 @@ MEMO: supported-formats ( -- formats )
 :: smoke-test ( graph -- pass? )
     supported-formats [| -T |
         supported-layouts [| -K |
-            unique-directory dup [
+            [
                 graph "smoke-test" -T -K graphviz
                 "smoke-test" graphviz-output-appears-to-exist?
-            ] with-directory
-            swap delete-tree
+            ] cleanup-unique-working-directory
         ] all?
     ] all? ;
 
