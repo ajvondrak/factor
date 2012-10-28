@@ -2,7 +2,8 @@
 ! See http://factorcode.org/license.txt for BSD license.
 USING: accessors combinators.short-circuit graphviz.render
 graphviz.render.private io.directories
-io.directories.search.windows io.files.info sequences system ;
+io.directories.search.windows io.files.info io.standard-paths
+kernel sequences system ;
 IN: graphviz.render.windows
 
 : graphviz-install-directories ( -- directories )
