@@ -1,15 +1,13 @@
 USING: accessors arrays assocs combinators.short-circuit
 continuations formatting graphviz graphviz.attributes
 graphviz.dot graphviz.notation graphviz.render
-graphviz.render.private io.directories io.directories.hierarchy
-io.files io.files.unique io.launcher io.pathnames kernel locals
-make math math.combinatorics math.parser memoize namespaces
-sequences sets splitting tools.test ;
+graphviz.render.private images.loader.private io.directories
+io.directories.hierarchy io.files io.files.unique io.launcher
+io.pathnames kernel locals make math math.combinatorics
+math.parser memoize namespaces sequences sequences.extras sets
+splitting system tools.test ;
 FROM: namespaces => set ;
 IN: graphviz.tests
-
-! Make sure Graphviz is installed
-{ t } [ default-graphviz-program >boolean ] unit-test
 
 ! XXX hack
 : force-error-message ( flag -- elts )
@@ -23,28 +21,42 @@ IN: graphviz.tests
         " " split
     ] recover ;
 
-MEMO: supported-layouts ( -- layouts )
-    "-K" force-error-message standard-layouts intersect ;
+! http://www.graphviz.org/Download_macos.php#comment-474
+: remove-sfdp-in-case-homebrew-is-dumb ( seq -- seq' )
+    os macosx? [ "sfdp" swap remove ] when ;
 
-MEMO: supported-formats ( -- formats )
-    "-T" force-error-message standard-formats intersect ;
+SYMBOLS: supported-layouts supported-formats ;
 
+"-K" force-error-message standard-layouts intersect
+remove-sfdp-in-case-homebrew-is-dumb
+supported-layouts set-global
+
+"-T" force-error-message standard-formats intersect
+supported-formats set-global
+
+! Can't use cleanup-unique-working-directory without fixing
+! issue #890, so skip the cleanup on Windows.
+:: cleanup-unique-working-directory* ( quot -- )
+    unique-directory :> path
+    path [ path quot with-temporary-directory ] with-directory
+    os windows? [ path delete-tree ] unless ; inline
+
+! Can't predict file extension since we use Graphviz's actual
+! -O flag, so just look to see that there seems to be some sort
+! of output.
 : graphviz-output-appears-to-exist? ( base -- ? )
-    ! Can't predict file extension since we use Graphviz's
-    ! actual -O flag, so just look to see that there seems to
-    ! be some sort of output.
     current-directory get directory-files
     [ swap head? ] with count 1 = ;
 
+: next! ( seq -- elt ) [ first ] [ 1 rotate! ] bi ;
+
 :: smoke-test ( graph -- pass? )
-    supported-formats [| -T |
-        supported-layouts [| -K |
-            [
-                graph "smoke-test" -T -K graphviz
-                "smoke-test" graphviz-output-appears-to-exist?
-            ] cleanup-unique-working-directory
-        ] all?
-    ] all? ;
+    supported-formats get-global next! :> -T 
+    supported-layouts get-global next! :> -K
+    [
+        graph "smoke-test" -T -K graphviz
+        "smoke-test" graphviz-output-appears-to-exist?
+    ] cleanup-unique-working-directory* ;
 
 : preview-smoke-test ( graph -- pass? )
     f "pass?" [
@@ -58,13 +70,6 @@ MEMO: supported-formats ( -- formats )
     graph[ "t" =labelloc "circo" =layout ];
     over number>string "K " prepend =label
     swap iota 2 [ first2 add-edge ] each-combination ;
-
-{ t } [ 5 K_n smoke-test ] unit-test
-{ t } [ 6 K_n smoke-test ] unit-test
-{ t } [ 7 K_n smoke-test ] unit-test
-{ t } [ 5 K_n preview-smoke-test ] unit-test
-{ t } [ 6 K_n preview-smoke-test ] unit-test
-{ t } [ 7 K_n preview-smoke-test ] unit-test
 
 :: partite-set ( n color -- cluster )
     color <cluster>
@@ -83,13 +88,6 @@ MEMO: supported-formats ( -- formats )
     add-edge
     n m "K %d,%d" sprintf =label ;
 
-{ t } [ 3 3 K_n,m smoke-test ] unit-test
-{ t } [ 3 4 K_n,m smoke-test ] unit-test
-{ t } [ 5 4 K_n,m smoke-test ] unit-test
-{ t } [ 3 3 K_n,m preview-smoke-test ] unit-test
-{ t } [ 3 4 K_n,m preview-smoke-test ] unit-test
-{ t } [ 5 4 K_n,m preview-smoke-test ] unit-test
-
 : add-cycle ( graph n -- graph' )
     [ iota add-path ] [ 1 - 0 add-edge ] bi ;
 
@@ -100,13 +98,6 @@ MEMO: supported-formats ( -- formats )
     over number>string "C " prepend =label
     swap add-cycle ;
 
-{ t } [ 5 C_n smoke-test ] unit-test
-{ t } [ 6 C_n smoke-test ] unit-test
-{ t } [ 7 C_n smoke-test ] unit-test
-{ t } [ 5 C_n preview-smoke-test ] unit-test
-{ t } [ 6 C_n preview-smoke-test ] unit-test
-{ t } [ 7 C_n preview-smoke-test ] unit-test
-
 : W_n ( n -- graph )
     <graph>
     graph[ "t" =labelloc "twopi" =layout ];
@@ -115,13 +106,6 @@ MEMO: supported-formats ( -- formats )
     over add-node
     over 1 - add-cycle
     swap [ ] [ 1 - iota >array ] bi add-edge ;
-
-{ t } [ 6 W_n smoke-test ] unit-test
-{ t } [ 7 W_n smoke-test ] unit-test
-{ t } [ 8 W_n smoke-test ] unit-test
-{ t } [ 6 W_n preview-smoke-test ] unit-test
-{ t } [ 7 W_n preview-smoke-test ] unit-test
-{ t } [ 8 W_n preview-smoke-test ] unit-test
 
 : cluster-example ( -- graph )
     <digraph>
@@ -150,9 +134,6 @@ MEMO: supported-formats ( -- formats )
         "end" add-node[ "Msquare" =shape ];
     ;
 
-{ t } [ cluster-example smoke-test ] unit-test
-{ t } [ cluster-example preview-smoke-test ] unit-test
-
 : colored-circle ( i -- node )
     [ <node> ] keep
     [ 16.0 / 0.5 + =width ]
@@ -171,9 +152,6 @@ MEMO: supported-formats ( -- formats )
     16 iota [
         [ 0 -- ] [ colored-circle add ] bi
     ] each ;
-
-{ t } [ colored-circles-example smoke-test ] unit-test
-{ t } [ colored-circles-example preview-smoke-test ] unit-test
 
 : dfa-example ( -- graph )
     <digraph>
@@ -197,9 +175,6 @@ MEMO: supported-formats ( -- formats )
         "LR_8" "LR_6" ->[ "S(b)" =label ];
         "LR_8" "LR_5" ->[ "S(a)" =label ];
     ;
-
-{ t } [ dfa-example smoke-test ] unit-test
-{ t } [ dfa-example preview-smoke-test ] unit-test
 
 : record-example ( -- graph )
     <digraph>
@@ -265,9 +240,6 @@ MEMO: supported-formats ( -- formats )
         "node11" "node1"  ->[ "f2" =tailport "f0" =headport ];
     ;
 
-{ t } [ record-example smoke-test ] unit-test
-{ t } [ record-example preview-smoke-test ] unit-test
-
 :: with-global-value ( value variable quot -- )
     variable get-global "orig" [
         [ value variable set-global quot call ]
@@ -280,38 +252,70 @@ MEMO: supported-formats ( -- formats )
     ] with-global-value ;
 
 : valid-preview-formats ( -- formats )
-    USE: images.loader.private
     types get keys "jpe" suffix
-    supported-formats intersect ;
-
-{ t } [
-    valid-preview-formats [ preview-format-test ] all?
-] unit-test
-
-[
-    supported-formats valid-preview-formats diff
-    [ preview-format-test ] attempt-all
-] [ unsupported-preview-format? ] must-fail-with
+    supported-formats get-global intersect ;
 
 : encoding-test ( encoding -- pass? )
     graph-encoding [ <graph> smoke-test ] with-global-value ;
 
-{ t }
-[
-    USE: io.encodings.8-bit.latin1
-    latin1 encoding-test
-] unit-test
+default-graphviz-program [
 
-{ t }
-[
-    USE: io.encodings.utf8
-    utf8 encoding-test
-] unit-test
+    { t } [ 5 K_n smoke-test ] unit-test
+    { t } [ 6 K_n smoke-test ] unit-test
+    { t } [ 7 K_n smoke-test ] unit-test
+    { t } [ 8 K_n preview-smoke-test ] unit-test
 
-[
-    USE: io.encodings.ascii
-    ascii encoding-test
-] [ unsupported-encoding? ] must-fail-with
+    { t } [ 8 6 K_n,m smoke-test ] unit-test
+    { t } [ 7 5 K_n,m smoke-test ] unit-test
+    { t } [ 3 9 K_n,m smoke-test ] unit-test
+    { t } [ 3 4 K_n,m preview-smoke-test ] unit-test
 
-! TODO add the examples from graphviz's source code (the .gv
-! files in graphs/directed/ and graphs/undirected/)
+    { t } [ 5 C_n smoke-test ] unit-test
+    { t } [ 6 C_n smoke-test ] unit-test
+    { t } [ 7 C_n smoke-test ] unit-test
+    { t } [ 8 C_n preview-smoke-test ] unit-test
+
+    { t } [ 5 W_n smoke-test ] unit-test
+    { t } [ 6 W_n smoke-test ] unit-test
+    { t } [ 7 W_n smoke-test ] unit-test
+    { t } [ 8 W_n preview-smoke-test ] unit-test
+
+    { t } [ cluster-example smoke-test ] unit-test
+    { t } [ cluster-example preview-smoke-test ] unit-test
+
+    { t } [ colored-circles-example smoke-test ] unit-test
+    { t } [ colored-circles-example preview-smoke-test ] unit-test
+
+    { t } [ dfa-example smoke-test ] unit-test
+    { t } [ dfa-example preview-smoke-test ] unit-test
+
+    { t } [ record-example smoke-test ] unit-test
+    { t } [ record-example preview-smoke-test ] unit-test
+
+    { t } [
+        valid-preview-formats [ preview-format-test ] all?
+    ] unit-test
+
+    [
+        supported-formats get-global valid-preview-formats diff
+        [ preview-format-test ] attempt-all
+    ] [ unsupported-preview-format? ] must-fail-with
+
+    { t }
+    [
+        USE: io.encodings.8-bit.latin1
+        latin1 encoding-test
+    ] unit-test
+
+    { t }
+    [
+        USE: io.encodings.utf8
+        utf8 encoding-test
+    ] unit-test
+
+    [
+        USE: io.encodings.ascii
+        ascii encoding-test
+    ] [ unsupported-encoding? ] must-fail-with
+
+] when
