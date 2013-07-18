@@ -14,7 +14,9 @@ IN: graphviz.tests
     [
         [ default-graphviz-program , , "?" , ] { } make
         try-output-process
-        { }
+        ! To balance the stack height, have to return a default
+        ! 'elts' value, though it shouldn't ever get pushed:
+        f
     ] [
         nip output>>
         "Use one of: " split1 nip "\n" ?tail drop
@@ -27,12 +29,13 @@ IN: graphviz.tests
 
 SYMBOLS: supported-layouts supported-formats ;
 
-"-K" force-error-message standard-layouts intersect
-remove-sfdp-in-case-homebrew-is-dumb
-supported-layouts set-global
+: init-supported-layouts/formats ( -- )
+    "-K" force-error-message standard-layouts intersect
+    remove-sfdp-in-case-homebrew-is-dumb
+    supported-layouts set-global
 
-"-T" force-error-message standard-formats intersect
-supported-formats set-global
+    "-T" force-error-message standard-formats intersect
+    supported-formats set-global ;
 
 ! Can't use cleanup-unique-working-directory without fixing
 ! issue #890, so skip the cleanup on Windows.
@@ -259,6 +262,8 @@ supported-formats set-global
     graph-encoding [ <graph> smoke-test ] with-global-value ;
 
 default-graphviz-program [
+
+    init-supported-layouts/formats
 
     { t } [ 5 K_n smoke-test ] unit-test
     { t } [ 6 K_n smoke-test ] unit-test
