@@ -281,7 +281,9 @@ void factor_vm::primitive_check_datastack() {
   fixnum current_height =
       (ctx->datastack - ctx->datastack_seg->start + sizeof(cell)) /
       sizeof(cell);
-  if (current_height - height != saved_height)
+  if (current_height - height != saved_height ||
+      current_height < out ||
+      saved_height < in)
     ctx->push(false_object);
   else {
     cell* ds_bot = (cell*)ctx->datastack_seg->start;
